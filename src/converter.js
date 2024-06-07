@@ -1,18 +1,13 @@
 import {
 	AnimationClip,
-	BooleanKeyframeTrack,
-	ColorKeyframeTrack,
 	NumberKeyframeTrack,
-	Vector3,
-	VectorKeyframeTrack
 } from 'three';
 
-var fps = 60
+var fps = 60;
 
 function modifiedKey(key) {
-
   if (["eyeLookDownLeft", "eyeLookDownRight", "eyeLookInLeft", "eyeLookInRight", "eyeLookOutLeft", "eyeLookOutRight", "eyeLookUpLeft", "eyeLookUpRight"].includes(key)) {
-    return key
+    return key;
   }
 
   if (key.endsWith("Right")) {
@@ -24,74 +19,48 @@ function modifiedKey(key) {
   return key;
 }
 
-function createAnimation (recordedData, morphTargetDictionary, bodyPart) {
-
-  // console.log("----morphTargetDictionary", morphTargetDictionary)
-
-  if (recordedData.length != 0) {
-    let animation = []
+function createAnimation(recordedData, morphTargetDictionary, bodyPart) {
+  if (recordedData.length !== 0) {
+    let animation = [];
     for (let i = 0; i < Object.keys(morphTargetDictionary).length; i++) {
-      animation.push([])
+      animation.push([]);
     }
-    let time = []
-    let finishedFrames = 0
-    recordedData.forEach((d, i) => {
-        Object.entries(d.blendshapes).forEach(([key, value]) => {
+    let time = [];
+    let finishedFrames = 0;
+    recordedData.forEach((d) => {
+      Object.entries(d.blendshapes).forEach(([key, value]) => {
+        if (!(modifiedKey(key) in morphTargetDictionary)) { return; }
 
-          if (! (modifiedKey(key) in morphTargetDictionary)) {return};
-          
-          if (key == 'mouthShrugUpper') {
-            value += 0.4;
-          }
+        // Apply a bias to reduce mouth opening  NOTE: this is specific to 3d model
+        if (key === 'jawOpen' || key === 'mouthOpen') {
+          value *= 0.65;  // Adjust this multiplier to control how much you want to reduce the mouth opening
+        }
 
-          animation[morphTargetDictionary[modifiedKey(key)]].push(value)
-        });
-        time.push(finishedFrames / fps)
-        finishedFrames++
+        if (key === 'mouthShrugUpper') {
+          value += 0.4;
+        }
 
-    })
+        animation[morphTargetDictionary[modifiedKey(key)]].push(value);
+      });
+      time.push(finishedFrames / fps);
+      finishedFrames++;
+    });
 
-    // console.log("-----animation", animation);
+    let tracks = [];
 
-    let tracks = []
-
-    let flag = false;
-    //create morph animation
+    // Create morph animation
     Object.entries(recordedData[0].blendshapes).forEach(([key, value]) => {
+      if (!(modifiedKey(key) in morphTargetDictionary)) { return; }
 
-      if (! (modifiedKey(key) in morphTargetDictionary)) {return};
-
-      let i = morphTargetDictionary[modifiedKey(key)]
-      
-      // if (bodyPart === "HG_TeethLower") {
-
-      //       if (flag === true)
-      //         return;
-            
-      //       if(key === 'jawOpen') {
-      //         let track2 = new NumberKeyframeTrack(`HG_TeethLower.morphTargetInfluences[${i}]`, time, animation[i])
-      //         tracks.push(track2)
-      //         flag = true
-      //       }
-      // } else {
-        let track = new NumberKeyframeTrack(`${bodyPart}.morphTargetInfluences[${i}]`, time, animation[i])
-
-        tracks.push(track)
-  
-      // }
-
-      
-      // if (key === "jawOpen") {
-      //   let track2 = new NumberKeyframeTrack(`HG_TeethLower.morphTargetInfluences[${i}]`, time, animation[i])
-      //   tracks.push(track2)
-      //   console.log("----jawOpen Track", track2);
-      // }
+      let i = morphTargetDictionary[modifiedKey(key)];
+      let track = new NumberKeyframeTrack(`${bodyPart}.morphTargetInfluences[${i}]`, time, animation[i]);
+      tracks.push(track);
     });
 
     const clip = new AnimationClip('animation', -1, tracks);
-    return clip
+    return clip;
   }
-  return null
+  return null;
 }
 
 export default createAnimation;

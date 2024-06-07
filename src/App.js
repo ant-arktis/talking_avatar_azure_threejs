@@ -3,7 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF, useTexture, Loader, Environment, useFBX, useAnimations, OrthographicCamera } from '@react-three/drei';
 import { MeshStandardMaterial } from 'three/src/materials/MeshStandardMaterial';
 
-import { LinearEncoding, sRGBEncoding } from 'three/src/constants';
+// Updated to three colorSpace https://discourse.threejs.org/t/updates-to-color-management-in-three-js-r152/50791
+import { LinearSRGBColorSpace, SRGBColorSpace } from 'three/src/constants';
 import { LineBasicMaterial, MeshPhysicalMaterial, Vector2 } from 'three';
 import ReactAudioPlayer from 'react-audio-player';
 
@@ -71,16 +72,16 @@ function Avatar({ avatar_url, speak, setSpeak, text, setAudioSource, playing }) 
     hairNormalTexture,
     hairRoughnessTexture
   ], t => {
-    t.encoding = sRGBEncoding;
+    t.colorSpace = SRGBColorSpace;
     t.flipY = false;
   });
 
-  bodyNormalTexture.encoding = LinearEncoding;
-  tshirtNormalTexture.encoding = LinearEncoding;
-  teethNormalTexture.encoding = LinearEncoding;
-  hairNormalTexture.encoding = LinearEncoding;
 
-  
+bodyNormalTexture.colorSpace = LinearSRGBColorSpace; // https://discourse.threejs.org/t/updates-to-color-management-in-three-js-r152/50791
+tshirtNormalTexture.colorSpace = LinearSRGBColorSpace;
+teethNormalTexture.colorSpace = LinearSRGBColorSpace;
+hairNormalTexture.colorSpace = LinearSRGBColorSpace;
+
   gltf.scene.traverse(node => {
 
 
@@ -89,6 +90,8 @@ function Avatar({ avatar_url, speak, setSpeak, text, setAudioSource, playing }) 
       node.castShadow = true;
       node.receiveShadow = true;
       node.frustumCulled = false;
+      node.rotation.z = Math.PI * 2;
+      //node.rotation.x = Math.PI / 2;
 
     
       if (node.name.includes("Body")) {
@@ -187,7 +190,7 @@ function Avatar({ avatar_url, speak, setSpeak, text, setAudioSource, playing }) 
   const mixer = useMemo(() => new THREE.AnimationMixer(gltf.scene), []);
 
   useEffect(() => {
-
+    console.log("Speak state changed:", speak);
     if (speak === false)
       return;
 
@@ -195,6 +198,7 @@ function Avatar({ avatar_url, speak, setSpeak, text, setAudioSource, playing }) 
     .then( response => {
 
       let {blendData, filename}= response.data;
+      console.log("Received blend data and filename:", blendData, filename);
 
       let newClips = [ 
         createAnimation(blendData, morphTargetDictionaryBody, 'HG_Body'), 
@@ -207,7 +211,7 @@ function Avatar({ avatar_url, speak, setSpeak, text, setAudioSource, playing }) 
 
     })
     .catch(err => {
-      console.error(err);
+      console.error("Error in makeSpeech:", err);
       setSpeak(false);
 
     })
@@ -301,7 +305,7 @@ function App() {
   const [audioSource, setAudioSource] = useState(null);
   const [playing, setPlaying] = useState(false);
 
-  // End of play
+  // End of play  q
   function playerEnded(e) {
     setAudioSource(null);
     setSpeak(false);
@@ -310,6 +314,7 @@ function App() {
 
   // Player is read
   function playerReady(e) {
+    console.log("Audio player ready, starting playback.");
     audioPlayer.current.audioEl.current.play();
     setPlaying(true);
 
@@ -340,6 +345,7 @@ function App() {
       makeDefault
       zoom={2000}
       position={[0, 1.65, 1]}
+      rotation={[0, 0, 0]}
       />
 
       {/* <OrbitControls
@@ -383,7 +389,7 @@ function Bg() {
   const texture = useTexture('/images/bg.webp');
 
   return(
-    <mesh position={[0, 1.5, -2]} scale={[0.8, 0.8, 0.8]}>
+    <mesh position={[0, 1.5, -2]} scale={[0.8, 0.8, 0.8]}  rotation={[0,0,0]} >
       <planeBufferGeometry />
       <meshBasicMaterial map={texture} />
 
